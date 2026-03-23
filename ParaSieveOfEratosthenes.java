@@ -3,11 +3,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class ParaSieveOfEratosthenes {
-    
+
 
     static void printPrimes(ArrayList<Integer> primes) {
         for (int prime : primes)
         System.out.println(prime);
+    }
+
+    private static ArrayList<Integer> collectPrimes(int n, byte[] oddNumbers) {
+
+        ArrayList<Integer> primes = new ArrayList<>();
+
+        primes.add(2);
+
+        for (int i = 3; i <= n; i += 2)
+        if (isPrime(i, oddNumbers))
+            primes.add(i);
+
+        return primes;
     }
 
     private static boolean isPrime(int num, byte[] oddNumbers) {
@@ -17,12 +30,14 @@ public class ParaSieveOfEratosthenes {
         return (oddNumbers[byteIndex] & (1 << bitIndex)) == 0;
     }
 
-    private static ArrayList<Integer> runParaSieve(int n, int numThreads, SieveOfEratosthenes soe) {
+    private static ArrayList<Integer> runParaSieve(int n, int root, int numThreads) {
+
+        SieveOfEratosthenes soe = new SieveOfEratosthenes(root);
 
         byte[] oddNumbers = new byte[(n / 16) + 1];
 
         int[] primes = soe.getPrimes();
-        Thread[] listOfThreads = new Thread[numThreads];
+        SieveThread[] listOfThreads = new SieveThread[numThreads];
 
         int numBytes = oddNumbers.length;
         int bytesPerThread = numBytes / numThreads;
@@ -41,11 +56,11 @@ public class ParaSieveOfEratosthenes {
             byteStart = byteEnd;
         }
         
-        for (Thread thread: listOfThreads) {
+        for (SieveThread thread: listOfThreads) {
             thread.start();
         }
 
-        for (Thread thread: listOfThreads) {
+        for (SieveThread thread: listOfThreads) {
             try {
                 thread.join();
             } catch (InterruptedException e) {
@@ -53,12 +68,7 @@ public class ParaSieveOfEratosthenes {
             }
         }
 
-        ArrayList<Integer> listOfPrimes = new ArrayList<>();
-        listOfPrimes.add(2);
-
-        for (Thread thread : listOfThreads) {
-            listOfPrimes.addAll(((SieveThread) thread).localPrimes);
-        }
+        ArrayList<Integer> listOfPrimes = collectPrimes(n, oddNumbers);
 
         return listOfPrimes;
     }
@@ -66,11 +76,11 @@ public class ParaSieveOfEratosthenes {
     private static double[] multiRun(int n, int root, int numRuns, int numThreads) {
 
         double[] timeInMilliArray = new double[numRuns];
-        SieveOfEratosthenes soe = new SieveOfEratosthenes(root);
+
         for (int i = 0; i < numRuns; i++) {
             double startTime = System.nanoTime();
 
-            ArrayList<Integer> primes = runParaSieve(n, numThreads, soe);
+            ArrayList<Integer> primes = runParaSieve(n, root, numThreads);
 
             double endTime = System.nanoTime();
 
